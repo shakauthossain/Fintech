@@ -1,0 +1,60 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const bool = (v, fallback = false) => {
+  if (v === undefined || v === null || v === "") return fallback;
+  return ["1", "true", "yes", "on"].includes(String(v).toLowerCase());
+};
+
+const int = (v, fallback) => {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const hasGoogle = Boolean(
+  process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+    process.env.DRIVE_WATCH_FOLDER_ID &&
+    process.env.SHEETS_SPREADSHEET_ID
+);
+
+const hasOpenRouter = Boolean(process.env.OPENROUTER_API_KEY);
+
+// Mock mode is on when explicitly requested OR when required credentials are absent.
+// This lets the whole stack run locally with zero external accounts.
+const mockMode = bool(process.env.MOCK_MODE, false) || !hasGoogle || !hasOpenRouter;
+
+export const config = {
+  port: int(process.env.PORT, 4000),
+  detectionMode: process.env.DETECTION_MODE || "poll",
+  pollIntervalMs: int(process.env.POLL_INTERVAL_MS, 5000),
+  maxConcurrentFiles: int(process.env.MAX_CONCURRENT_FILES, 2),
+  mockMode,
+  capabilities: { hasGoogle, hasOpenRouter },
+
+  google: {
+    credentialsPath: process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
+    watchFolderId: process.env.DRIVE_WATCH_FOLDER_ID || "",
+    processedFolderId: process.env.DRIVE_PROCESSED_FOLDER_ID || "",
+    spreadsheetId: process.env.SHEETS_SPREADSHEET_ID || "",
+  },
+
+  webhook: {
+    publicUrl: process.env.PUBLIC_WEBHOOK_URL || "",
+  },
+
+  openrouter: {
+    apiKey: process.env.OPENROUTER_API_KEY || "",
+    baseUrl: process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1",
+    model: process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-sonnet",
+    siteUrl: process.env.OPENROUTER_SITE_URL || "",
+    appName: process.env.OPENROUTER_APP_NAME || "invoice-pipeline",
+  },
+
+  corsOrigins: (process.env.CORS_ORIGINS || "http://localhost:3000")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+};
+
+export default config;

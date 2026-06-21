@@ -1,0 +1,27 @@
+{
+  "name": "invoice-pipeline-backend",
+  "version": "0.1.0",
+  "description": "Express backend for the automated invoice processing pipeline (Drive -> LLM via OpenRouter -> Sheets).",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "googleapis": "^144.0.0",
+    "mammoth": "^1.8.0",
+    "nanoid": "^5.0.7",
+    "openai": "^4.67.3",
+    "pino": "^9.4.0",
+    "pino-pretty": "^11.2.2",
+    "xlsx": "^0.18.5",
+    "zod": "^3.23.8"
+  }
+}
