@@ -9,12 +9,34 @@ and exposes a REST API for the frontend.
 ```bash
 cp .env.example .env      # defaults to MOCK_MODE so it runs with no accounts
 npm install
-npm run dev               # http://localhost:4000
+npm run dev               # http://localhost:8001
 ```
 
-By default the backend runs in **mock mode** (no Google/OpenRouter calls), so you
-can try the whole stack immediately. Add real credentials to `.env` and set
-`MOCK_MODE=false` to go live.
+Set `DATABASE_URL` in `.env` (Neon PostgreSQL). On startup the app runs Prisma
+migrations and imports any legacy JSON from `backend/data/` once if the database
+is empty.
+
+## Auth
+
+- JWT session cookie (`auth_token`, httpOnly)
+- `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
+- All `/api/*` routes except `/api/health` and `/api/auth/*` require login
+- First boot seeds superadmin `dev@notionhive.com` when the database has no users
+
+## Database
+
+PostgreSQL via [Neon](https://neon.tech) + Prisma.
+
+| Table | Stores |
+|-------|--------|
+| `users` | Accounts, bcrypt password hashes, roles |
+| `app_setup` | Google OAuth tokens, folder & spreadsheet IDs |
+| `invoices` | Processed invoice rows |
+| `line_items` | Invoice line items |
+| `processed_files` | Drive file IDs already handled |
+
+Legacy JSON in `backend/data/*.json` is imported automatically on first run if
+those tables are empty.
 
 ## Modes
 

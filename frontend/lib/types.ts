@@ -1,5 +1,20 @@
 export type InvoiceStatus = "OK" | "NEEDS_REVIEW" | "ERROR";
 
+export type UserRole = "user" | "superadmin";
+
+export interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+  createdAt: string;
+}
+
+export interface AuthResponse {
+  ok: boolean;
+  user: User;
+  token?: string;
+}
+
 export interface Invoice {
   invoice_id: string;
   processed_at: string;
@@ -45,6 +60,38 @@ export interface Health {
   ok: boolean;
   mockMode: boolean;
   detectionMode: string;
-  capabilities: { hasGoogle: boolean; hasOpenRouter: boolean };
+  capabilities: {
+    hasGoogle: boolean;
+    hasOpenRouter: boolean;
+    canProcess: boolean;
+    oauthConfigured: boolean;
+  };
+  setup: SetupStatus;
   model: string;
+}
+
+export interface SetupStatus {
+  connected: boolean;
+  ready: boolean;
+  oauthConfigured?: boolean;
+  canProcess?: boolean;
+  hasGoogle?: boolean;
+  canManageIntegrations?: boolean;
+  googleEmail: string | null;
+  watchFolder: { id: string; name: string; url?: string } | null;
+  processedFolder: { id: string; name: string; url?: string } | null;
+  spreadsheet: { id: string; name: string; url: string } | null;
+  updatedAt: string | null;
+}
+
+export interface DriveFolder {
+  id: string;
+  name: string;
+}
+
+export interface DriveSpreadsheet {
+  id: string;
+  name: string;
+  modifiedTime?: string;
+  url?: string;
 }

@@ -38,13 +38,13 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  if (loading) return <div className="text-slate-400">Loading…</div>;
+  if (loading) return <div className="page-container text-sm text-zinc-400">Loading…</div>;
   if (!invoice)
     return (
-      <div className="space-y-4">
-        <p className="text-slate-500">Invoice not found.</p>
-        <Link href="/" className="text-brand-600 hover:underline">
-          ← Back to dashboard
+      <div className="page-container space-y-3">
+        <p className="text-sm text-zinc-500">Invoice not found.</p>
+        <Link href="/" className="text-sm font-medium text-zinc-700 hover:underline">
+          Back to dashboard
         </Link>
       </div>
     );
@@ -57,37 +57,35 @@ export default function InvoiceDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Link href="/" className="text-sm text-brand-600 hover:underline">
-        ← Back to dashboard
+    <div className="page-container space-y-6">
+      <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-900">
+        Back to dashboard
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-slate-900">
-              {invoice.invoice_number || "(no number)"}
-            </h1>
+            <h1 className="page-title">{invoice.invoice_number || "Invoice"}</h1>
             <StatusBadge status={invoice.status} />
           </div>
-          <p className="text-sm text-slate-500">
-            From {invoice.source_file_name || "—"} · processed {dateTime(invoice.processed_at)}
+          <p className="page-subtitle">
+            {invoice.source_file_name} · {dateTime(invoice.processed_at)}
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setStatus("OK")}
             disabled={busy || invoice.status === "OK"}
-            className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+            className="btn-primary"
           >
             Mark OK
           </button>
           <button
             onClick={() => setStatus("NEEDS_REVIEW")}
             disabled={busy || invoice.status === "NEEDS_REVIEW"}
-            className="rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-amber-600 disabled:opacity-50"
+            className="btn-secondary"
           >
-            Flag for review
+            Flag review
           </button>
         </div>
       </div>
@@ -156,9 +154,11 @@ export default function InvoiceDetailPage() {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">{title}</h2>
-      {children}
+    <section className="panel">
+      <div className="panel-header">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{title}</h2>
+      </div>
+      <div className="panel-body">{children}</div>
     </section>
   );
 }

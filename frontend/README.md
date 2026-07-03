@@ -13,8 +13,12 @@ npm run dev                         # http://localhost:3000
 
 Make sure the backend is running first (see `../backend`).
 
+On first backend start, a **superadmin** account is seeded automatically when no users exist.
+Default: `dev@notionhive.com` / `Notion@Hive2025!` (email is case-insensitive).
+
 ## Pages
 
+- `/login` — Email/password sign-in (required for all other pages)
 - `/` — Dashboard: stats, recent invoices, and a **Simulate upload** button
   (visible in mock mode) to drive the pipeline without Google Drive.
 - `/invoices/[id]` — Invoice detail: sender, totals, line items, extra fields,

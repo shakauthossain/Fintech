@@ -9,7 +9,7 @@ let client = null;
  * Returns null in mock mode.
  */
 export function getOpenRouter() {
-  if (config.mockMode) return null;
+  if (!config.openrouter.apiKey) return null;
   if (client) return client;
 
   client = new OpenAI({

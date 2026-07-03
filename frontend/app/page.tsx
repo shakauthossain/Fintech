@@ -1,28 +1,32 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { money } from "@/lib/format";
-import type { Health, Invoice, Stats } from "@/lib/types";
-import { InvoiceTable } from "@/components/InvoiceTable";
+import type { Health, Invoice, Stats, User } from "@/lib/types";
+import { InvoiceSpreadsheet } from "@/components/InvoiceSpreadsheet";
+import { UploadZone } from "@/components/UploadZone";
+import { Alert } from "@/components/ui/Alert";
 
 export default function DashboardPage() {
   const [health, setHealth] = useState<Health | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setError(null);
-      const [h, s, list] = await Promise.all([api.health(), api.stats(), api.invoices()]);
+      const [h, me, s, list] = await Promise.all([api.health(), api.me(), api.stats(), api.invoices()]);
       setHealth(h);
+      setUser(me.user);
       setStats(s);
       setInvoices(list);
-    } catch (e) {
-      setError(`Could not reach the backend at ${api.base}. Is it running?`);
+    } catch {
+      setError(`Cannot reach backend at ${api.base}`);
     } finally {
       setLoading(false);
     }
@@ -30,101 +34,105 @@ export default function DashboardPage() {
 
   useEffect(() => {
     load();
-    const id = setInterval(load, 5000);
+    const id = setInterval(load, 10000);
     return () => clearInterval(id);
   }, [load]);
 
-  const simulate = async () => {
-    setBusy(true);
-    try {
-      await api.simulateUpload();
-      await load();
-    } finally {
-      setBusy(false);
-    }
-  };
+  const driveWatching = health?.setup?.ready;
+  const canUpload = health?.capabilities?.canProcess;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="page-container-wide min-h-[calc(100vh-4rem)] gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-500">
-            Live ledger of processed invoices
-            {health && (
-              <span className="ml-2 inline-flex items-center gap-1">
-                <span
-                  className={`h-2 w-2 rounded-full ${health.ok ? "bg-emerald-500" : "bg-rose-500"}`}
-                />
-                <span className="text-slate-400">
-                  {health.mockMode ? "mock mode" : health.detectionMode} · {health.model}
-                </span>
-              </span>
-            )}
-          </p>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">Upload invoices or receive them from Google Drive</p>
         </div>
-        {health?.mockMode && (
-          <button
-            onClick={simulate}
-            disabled={busy}
-            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-60"
-          >
-            {busy ? "Processing…" : "Simulate upload"}
-          </button>
+        {!driveWatching && user?.role === "superadmin" && (
+          <Link href="/settings" className="btn-primary shrink-0">
+            Set up Google Drive
+          </Link>
         )}
+      </header>
+
+      {error && <Alert tone="error">{error}</Alert>}
+
+      <div className="flex flex-wrap gap-2">
+        <StatusChip
+          label="Google Drive"
+          ok={driveWatching}
+          detail={
+            driveWatching
+              ? health?.setup?.watchFolder?.name || "Watching"
+              : health?.setup?.connected
+                ? "Finish setup"
+                : "Not connected"
+          }
+        />
+        <StatusChip
+          label="Spreadsheet"
+          ok={Boolean(health?.setup?.spreadsheet)}
+          detail={health?.setup?.spreadsheet?.name || "Not selected"}
+        />
+        <StatusChip label="AI extraction" ok={canUpload} detail={health?.model || "Not configured"} />
       </div>
 
-      {error && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
+      {canUpload ? (
+        <UploadZone primary onComplete={load} />
+      ) : (
+        <div className="panel px-5 py-3">
+          <Alert tone="warning">Add your OpenRouter API key in the backend to enable extraction.</Alert>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Total invoices" value={stats?.total ?? 0} />
-        <StatCard label="Line items" value={stats?.lineItems ?? 0} />
-        <StatCard label="Needs review" value={stats?.byStatus?.NEEDS_REVIEW ?? 0} accent="amber" />
-        <StatCard
-          label="Total value"
-          value={money(stats?.totalAmount ?? 0, "USD")}
-        />
-      </div>
+      <StatsBar stats={stats} />
 
-      <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Recent invoices
-        </h2>
-        {loading ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-10 text-center text-slate-400">
-            Loading…
-          </div>
-        ) : (
-          <InvoiceTable invoices={invoices} />
-        )}
-      </div>
+      <InvoiceSpreadsheet
+        invoices={invoices}
+        loading={loading}
+        onRefresh={load}
+        sheetLinked={health?.setup?.ready}
+      />
     </div>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  accent?: "amber";
-}) {
+function StatsBar({ stats }: { stats: Stats | null }) {
+  const items = [
+    { label: "Invoices", value: String(stats?.total ?? 0) },
+    { label: "Line items", value: String(stats?.lineItems ?? 0) },
+    {
+      label: "Needs review",
+      value: String(stats?.byStatus?.NEEDS_REVIEW ?? 0),
+      highlight: Number(stats?.byStatus?.NEEDS_REVIEW) > 0,
+    },
+    { label: "Total value", value: money(stats?.totalAmount ?? 0, "USD") },
+  ];
+
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      <div
-        className={`mt-1 text-2xl font-semibold ${
-          accent === "amber" && Number(value) > 0 ? "text-amber-600" : "text-slate-900"
-        }`}
-      >
-        {value}
-      </div>
+    <div className="panel flex flex-wrap divide-x divide-zinc-100">
+      {items.map((item) => (
+        <div key={item.label} className="flex min-w-[8rem] flex-1 items-baseline gap-2 px-4 py-2.5">
+          <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">{item.label}</span>
+          <span
+            className={`text-base font-semibold tabular-nums ${
+              item.highlight ? "text-amber-600" : "text-zinc-900"
+            }`}
+          >
+            {item.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StatusChip({ label, detail, ok }: { label: string; detail: string; ok?: boolean }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm shadow-sm">
+      <span className={`h-2 w-2 shrink-0 rounded-full ${ok ? "bg-emerald-500" : "bg-zinc-300"}`} />
+      <span className="font-medium text-zinc-700">{label}</span>
+      <span className="max-w-[12rem] truncate text-zinc-500">{detail}</span>
     </div>
   );
 }

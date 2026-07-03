@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+model AppSetup {
+  id                  Int       @id @default(1)
+  googleJson          Json?     @map("google_json")
+  watchFolderId       String    @default("") @map("watch_folder_id")
+  watchFolderName     String    @default("") @map("watch_folder_name")
+  processedFolderId   String    @default("") @map("processed_folder_id")
+  processedFolderName String    @default("") @map("processed_folder_name")
+  spreadsheetId       String    @default("") @map("spreadsheet_id")
+  spreadsheetName     String    @default("") @map("spreadsheet_name")
+  updatedAt           DateTime? @map("updated_at")
+  updatedBy           String?   @map("updated_by")
+
+  @@map("app_setup")
+}
+
+model Invoice {
+  invoiceId       String     @id @map("invoice_id")
+  processedAt     DateTime   @map("processed_at")
+  invoiceNumber   String?    @map("invoice_number")
+  invoiceDate     String?    @map("invoice_date")
+  invoiceTime     String?    @map("invoice_time")
+  senderName      String?    @map("sender_name")
+  senderEmail     String?    @map("sender_email")
+  senderAddress   String?    @map("sender_address")
+  currency        String?
+  subtotal        Float?
+  tax             Float?
+  total           Float?
+  paymentTerms    String?    @map("payment_terms")
+  dueDate         String?    @map("due_date")
+  sourceFileName  String?    @map("source_file_name")
+  sourceFileId    String?    @map("source_file_id")
+  status          String
+  extraFieldsJson String     @default("{}") @map("extra_fields_json")
+  lineItems       LineItem[]
+
+  @@index([sourceFileId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model LineItem {
+  lineId      String  @id @map("line_id")
+  invoiceId   String  @map("invoice_id")
+  description String?
+  quantity    Float?
+  unitPrice   Float?  @map("unit_price")
+  lineTotal   Float?  @map("line_total")
+  invoice     Invoice @relation(fields: [invoiceId], references: [invoiceId], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("line_items")
+}
+
+model ProcessedFile {
+  fileId String @id @map("file_id")
+
+  @@map("processed_files")
+}

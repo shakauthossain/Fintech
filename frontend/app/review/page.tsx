@@ -25,33 +25,30 @@ export default function ReviewPage() {
 
   useEffect(() => {
     load();
-    const id = setInterval(load, 5000);
+    const id = setInterval(load, 10000);
     return () => clearInterval(id);
   }, [load]);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Review queue</h1>
-        <p className="text-sm text-slate-500">
-          Invoices the system couldn&apos;t fully process. Open one to correct and resolve it.
-        </p>
-      </div>
+    <div className="page-container space-y-8">
+      <header>
+        <h1 className="page-title">Review queue</h1>
+        <p className="page-subtitle">Invoices that need manual attention</p>
+      </header>
 
       {loading ? (
-        <div className="text-slate-400">Loading…</div>
+        <div className="panel py-12 text-center text-sm text-zinc-400">Loading…</div>
       ) : (
         <>
           <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-600">
-              Needs review ({needsReview.length})
+            <h2 className="mb-3 text-sm font-medium text-zinc-700">
+              Needs review <span className="text-zinc-400">({needsReview.length})</span>
             </h2>
             <InvoiceTable invoices={needsReview} />
           </section>
-
           <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-rose-600">
-              Errors ({errored.length})
+            <h2 className="mb-3 text-sm font-medium text-zinc-700">
+              Errors <span className="text-zinc-400">({errored.length})</span>
             </h2>
             <InvoiceTable invoices={errored} />
           </section>

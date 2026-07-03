@@ -1,5 +1,6 @@
 import config from "../config/env.js";
 import logger from "../lib/logger.js";
+import { getRuntimeCapabilities } from "../lib/capabilities.js";
 import { startPolling } from "./pollingWatcher.js";
 
 let handler = null;
@@ -25,14 +26,15 @@ export async function emitNewFile(file) {
 export async function startDetection(fn) {
   onNewFile(fn);
 
-  if (config.mockMode) {
-    logger.info("Detection: MOCK mode (use POST /api/simulate-upload to inject invoices)");
+  const caps = await getRuntimeCapabilities();
+  if (!caps.hasGoogle) {
+    logger.info("Detection: disabled (connect Google in Settings or configure .env)");
     return;
   }
 
   if (config.detectionMode === "push") {
     logger.info("Detection: PUSH mode (Drive watch channel -> POST /webhooks/drive)");
-    return; // webhook route drives emitNewFile
+    return;
   }
 
   logger.info({ intervalMs: config.pollIntervalMs }, "Detection: POLL mode (Drive Changes API)");

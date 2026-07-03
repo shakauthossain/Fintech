@@ -1,22 +1,25 @@
-import config from "../config/env.js";
 import logger from "../lib/logger.js";
-import { getDrive } from "../ingestion/driveClient.js";
+import { getDrive, getProcessedFolderId } from "../lib/googleAuth.js";
+import { getRuntimeCapabilities } from "../lib/capabilities.js";
 
-/**
- * Moves a processed file into the Processed/ folder by swapping its parents.
- * No-op in mock mode.
- */
 export async function moveToProcessed(fileId) {
-  if (config.mockMode || !config.google.processedFolderId) {
-    logger.debug({ fileId }, "mock: skipping move to Processed/");
+  const caps = await getRuntimeCapabilities();
+  if (!caps.hasGoogle) return;
+
+  const processedFolderId = await getProcessedFolderId();
+  if (!processedFolderId) {
+    logger.debug({ fileId }, "no processed folder configured; skipping move");
     return;
   }
+
   const drive = await getDrive();
+  if (!drive) return;
+
   const meta = await drive.files.get({ fileId, fields: "parents" });
   const previousParents = (meta.data.parents || []).join(",");
   await drive.files.update({
     fileId,
-    addParents: config.google.processedFolderId,
+    addParents: processedFolderId,
     removeParents: previousParents,
     fields: "id, parents",
   });
