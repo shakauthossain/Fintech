@@ -10,8 +10,26 @@ import { moveToProcessed } from "./postprocess/fileMover.js";
 import invoiceStore from "./store/invoiceStore.js";
 import { getRuntimeCapabilities } from "./lib/capabilities.js";
 
+async function finalizeDriveFile(fileId) {
+  const moved = await moveToProcessed(fileId);
+  if (!moved) {
+    logger.warn(
+      { fileId },
+      "file processed but not moved — set a processed folder in Integrations"
+    );
+  }
+  await processedStore.add(fileId);
+}
+
 async function runPipeline(buffer, meta, { skipDriveActions = false } = {}) {
   const fileId = meta.id ?? meta.fileId;
+
+  const finish = async (result) => {
+    if (!skipDriveActions) {
+      await finalizeDriveFile(fileId);
+    }
+    return result;
+  };
 
   const normalizer = selectNormalizer(meta.mimeType);
   if (!normalizer) {
@@ -22,7 +40,11 @@ async function runPipeline(buffer, meta, { skipDriveActions = false } = {}) {
       "NEEDS_REVIEW"
     );
     await invoiceStore.addInvoice(invoiceRow, lineItemRows);
-    return { status: "NEEDS_REVIEW", invoiceId: invoiceRow.invoice_id, reason: "unsupported_format" };
+    return finish({
+      status: "NEEDS_REVIEW",
+      invoiceId: invoiceRow.invoice_id,
+      reason: "unsupported_format",
+    });
   }
 
   let invoice;
@@ -36,7 +58,11 @@ async function runPipeline(buffer, meta, { skipDriveActions = false } = {}) {
       "ERROR"
     );
     await invoiceStore.addInvoice(invoiceRow, lineItemRows);
-    return { status: "ERROR", invoiceId: invoiceRow.invoice_id, reason: "extraction_failed" };
+    return finish({
+      status: "ERROR",
+      invoiceId: invoiceRow.invoice_id,
+      reason: "extraction_failed",
+    });
   }
 
   const { invoiceRow, lineItemRows } = toRows(invoice, meta, "OK");
@@ -45,16 +71,11 @@ async function runPipeline(buffer, meta, { skipDriveActions = false } = {}) {
     await writeInvoice(invoiceRow, lineItemRows);
     await invoiceStore.addInvoice(invoiceRow, lineItemRows);
   } catch (err) {
-    logger.error({ err, fileId }, "sheets write failed; will retry later");
-    return { status: "ERROR", reason: "write_failed" };
+    logger.error({ err, fileId }, "sheets write failed");
+    return finish({ status: "ERROR", reason: "write_failed" });
   }
 
-  if (!skipDriveActions) {
-    await moveToProcessed(fileId);
-    await processedStore.add(fileId);
-  }
-
-  return { status: "OK", invoiceId: invoiceRow.invoice_id };
+  return finish({ status: "OK", invoiceId: invoiceRow.invoice_id });
 }
 
 export async function processFile(file) {
@@ -62,16 +83,14 @@ export async function processFile(file) {
 
   if (await processedStore.has(file.fileId)) {
     logger.info({ fileId: file.fileId }, "skip: already processed");
+    await finalizeDriveFile(file.fileId);
     return { status: "SKIP", reason: "already_processed" };
   }
 
   const prior = await invoiceStore.findBySourceFileId(file.fileId);
-  if (prior?.status === "OK") {
-    logger.info({ fileId: file.fileId, invoiceId: prior.invoice_id }, "skip: already extracted");
-    await moveToProcessed(file.fileId).catch((err) => {
-      logger.warn({ err, fileId: file.fileId }, "could not move already-processed file");
-    });
-    await processedStore.add(file.fileId);
+  if (prior) {
+    logger.info({ fileId: file.fileId, invoiceId: prior.invoice_id }, "skip: already in store");
+    await finalizeDriveFile(file.fileId);
     return { status: "SKIP", reason: "already_in_store" };
   }
 

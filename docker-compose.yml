@@ -6,10 +6,11 @@
 # Usage:
 #   cp backend/.env.example backend/.env   # fill in secrets
 #   docker compose up --build
-#   open http://localhost:3001
+#
+# Production: https://fintech.riseo.online (nginx → localhost:3001)
 #
 # Google OAuth redirect URI (Google Cloud Console):
-#   http://localhost:3001/api/setup/google/callback
+#   https://fintech.riseo.online/api/setup/google/callback
 
 services:
   backend:
@@ -21,9 +22,10 @@ services:
       - ./backend/.env
     environment:
       PORT: "8001"
-      CORS_ORIGINS: http://localhost:3001
-      FRONTEND_URL: http://localhost:3001
-      GOOGLE_OAUTH_REDIRECT_URI: http://localhost:3001/api/setup/google/callback
+      CORS_ORIGINS: https://fintech.riseo.online
+      FRONTEND_URL: https://fintech.riseo.online
+      GOOGLE_OAUTH_REDIRECT_URI: https://fintech.riseo.online/api/setup/google/callback
+      AUTH_COOKIE_SECURE: "true"
     volumes:
       - ./backend/data:/app/data
     networks:
